@@ -209,6 +209,20 @@ class YChartsDataSource(DataSource):
                 'total_records': 0
             }
     
+    async def fetch_data(self, **kwargs) -> Dict[str, Any]:
+        """Fetch data from YCharts - implements abstract method from base class."""
+        # Default to Tesla deliveries if no specific data type requested
+        data_type = kwargs.get('data_type', 'tesla_deliveries')
+        
+        if data_type == 'tesla_deliveries':
+            return await self.fetch_tesla_deliveries()
+        else:
+            return {
+                'success': False,
+                'data': None,
+                'error': f'Unsupported data type: {data_type}'
+            }
+    
     async def fetch_tesla_deliveries(self) -> Dict[str, Any]:
         """Fetch Tesla delivery data from YCharts."""
         try:
