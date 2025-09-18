@@ -5,7 +5,7 @@ import structlog
 
 from app.config import settings
 from app.database import engine
-from app.api import tickers, tesla, gametheory, backtest, optimize, benchmarks
+from app.api import tickers, tesla, gametheory, backtest, optimize, benchmarks, btc
 from app.utils.security import SecurityMiddleware
 from app.utils.monitoring import metrics, health_checker, add_health_check
 
@@ -60,6 +60,7 @@ app.middleware("http")(SecurityMiddleware.security_headers_middleware)
 # Include API routers
 app.include_router(tickers.router, prefix="/api/tickers", tags=["tickers"])
 app.include_router(tesla.router, prefix="/api/tesla", tags=["tesla"])
+app.include_router(btc.router, prefix="/api/btc", tags=["bitcoin"])
 app.include_router(gametheory.router, prefix="/api/gametheory", tags=["gametheory"])
 app.include_router(backtest.router, prefix="/api/backtest", tags=["backtest"])
 app.include_router(optimize.router, prefix="/api/optimize", tags=["optimize"])

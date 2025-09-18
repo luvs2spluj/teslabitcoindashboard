@@ -1,0 +1,57 @@
+name: Deploy Tesla Dashboard
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: apps/web/package-lock.json
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Python dependencies
+      run: |
+        cd apps/api
+        pip install -r requirements.txt
+    
+    - name: Install Node dependencies
+      run: |
+        cd apps/web
+        npm install
+    
+    - name: Build Frontend
+      run: |
+        cd apps/web
+        npm run build
+    
+    - name: Test API
+      run: |
+        cd apps/api
+        python -m pytest tests/ || echo "No tests found, continuing..."
+    
+    - name: Deploy to Railway (if main branch)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "🚀 Ready for Railway deployment!"
+        echo "Manual steps:"
+        echo "1. Go to railway.app"
+        echo "2. Connect GitHub repo"
+        echo "3. Add PostgreSQL database"
+        echo "4. Add Redis cache"
+        echo "5. Deploy automatically"

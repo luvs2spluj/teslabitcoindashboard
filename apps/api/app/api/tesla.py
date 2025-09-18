@@ -1,12 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date
+from datetime import date, timedelta
 
 from app.database import get_db
 from app.models.tesla_metric import TeslaMetric
+from app.datasources.bgeometrics import BGeometricsDataSource
+from app.datasources.stooq import StooqDataSource
+from app.datasources.ycharts import YChartsDataSource
 
 router = APIRouter()
+
+# Initialize data sources
+bgeometrics = BGeometricsDataSource()
+stooq = StooqDataSource()
+ycharts = YChartsDataSource()
 
 @router.get("/metrics")
 async def get_tesla_metrics(
@@ -89,3 +97,124 @@ async def get_tesla_dashboard(
             for metric in margin_data
         ]
     }
+
+@router.get("/stock-data")
+async def get_tesla_stock_data(
+    start: Optional[date] = Query(None, description="Start date"),
+    end: Optional[date] = Query(None, description="End date"),
+    days: int = Query(30, ge=1, le=365, description="Number of days of data")
+):
+    """Get live Tesla stock data from BGeometrics with yfinance fallback."""
+    try:
+        # Set default date range if not provided
+        if not end:
+            end = date.today()
+        if not start:
+            start = end - timedelta(days=days)
+        
+        # Try BGeometrics first (primary source for Tesla)
+        try:
+            result = await bgeometrics.fetch_data('TSLA', start, end)
+            
+            if result and result.get('data'):
+                return {
+                    "success": True,
+                    "data": result,
+                    "source": "bgeometrics",
+                    "message": "Tesla data fetched from BGeometrics API"
+                }
+        except Exception as e:
+            print(f"BGeometrics failed: {e}")
+        
+        # Fallback to Stooq
+        try:
+            result = await stooq.fetch_data('TSLA', start, end)
+            
+            if result and result.get('data'):
+                return {
+                    "success": True,
+                    "data": result,
+                    "source": "stooq",
+                    "message": "Tesla data fetched from Stooq (fallback)"
+                }
+        except Exception as e:
+            print(f"Stooq fallback failed: {e}")
+        
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to fetch Tesla stock data from any source"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching Tesla stock data: {str(e)}"
+        )
+
+@router.get("/latest-price")
+async def get_tesla_latest_price():
+    """Get the latest Tesla stock price."""
+    try:
+        # Try BGeometrics first
+        try:
+            result = bgeometrics.get_latest_price('TSLA')
+            
+            if result['success']:
+                return {
+                    "success": True,
+                    "data": result['data'],
+                    "source": "bgeometrics",
+                    "message": "Latest Tesla price from BGeometrics"
+                }
+        except Exception as e:
+            print(f"BGeometrics latest price failed: {e}")
+        
+        # Fallback to Stooq
+        try:
+            result = stooq.get_latest_price('TSLA')
+            
+            if result['success']:
+                return {
+                    "success": True,
+                    "data": result['data'],
+                    "source": "stooq",
+                    "message": "Latest Tesla price from Stooq (fallback)"
+                }
+        except Exception as e:
+            print(f"Stooq latest price failed: {e}")
+        
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to fetch latest Tesla price from any source"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching latest Tesla price: {str(e)}"
+        )
+
+@router.get("/deliveries")
+async def get_tesla_deliveries():
+    """Get Tesla delivery data from YCharts."""
+    try:
+        result = await ycharts.fetch_tesla_deliveries()
+        
+        if result['success']:
+            return {
+                "success": True,
+                "data": result['data'],
+                "source": "ycharts",
+                "message": "Tesla delivery data from YCharts"
+            }
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Unable to fetch Tesla delivery data: {result['error']}"
+            )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching Tesla delivery data: {str(e)}"
+        )
