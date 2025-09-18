@@ -28,6 +28,7 @@ optuna==3.4.0
 
 # ETL and workflows
 requests==2.31.0
+aiohttp==3.9.1
 feedparser==6.0.10
 # praw==7.7.1  # Reddit API, optional for now
 
@@ -45,7 +46,7 @@ vaderSentiment==3.3.2
 
 # Monitoring and logging
 # sentry-sdk[fastapi]==1.38.0  # Optional monitoring
-# structlog==23.2.0  # Optional logging
+structlog==23.2.0  # Required by app
 
 # Development tools (commented out for production)
 # pytest==7.4.3
